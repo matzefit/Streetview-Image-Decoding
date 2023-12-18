@@ -9,5 +9,5 @@ Our result shows a mean IoU well above 0.7 and RMSE of 5.6 Celsius.
 
 ![Result](Plots/loss.png)
 
-![Result](Plots/prediction.png)
+![Result](Plots/highlight.png)
 
