@@ -1,5 +1,13 @@
-"# Streetview-Image-Decoding" 
+# VisTemp - Developing Visual Temperature Prediction from Semantic Segmentation of Street view Imagery
 
 
-Gitignore currently ignores the folder Data . 
-to download the data run the ScriptDownloadData.py in the root folder, that will download some zip files (ca 15gb), unzip these and place into /Data
+We developed a CNN model that transforms street view images into air temperature estimations by the means of scene semantic segmentation. 
+
+The model combines both segmentation and temperature prediction, and was trained CityScape Dataset
+
+Our result shows a mean IoU well above 0.7 and RMSE of 5.6 Celsius.
+
+![Result](plots/loss.png)
+
+![Result](plots/prediction.png)
+
