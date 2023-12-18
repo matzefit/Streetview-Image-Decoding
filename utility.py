@@ -9,6 +9,10 @@ import numpy as np
 from sklearn.metrics import confusion_matrix
 import seaborn as sns
 from scipy import stats
+from skimage.filters import median
+from skimage.morphology import binary_opening, binary_closing, disk, remove_small_objects
+from scipy.ndimage import generate_binary_structure
+from scipy.ndimage import median_filter, label
 
 import matplotlib.pyplot as plt
 
@@ -61,41 +65,41 @@ Label = namedtuple( 'Label' , [
 
 labels = [
     #       name                     id    trainId   category            catId     hasInstances   ignoreInEval   color
-    Label(  'unlabeled'            ,  0 ,      10 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
-    Label(  'ego vehicle'          ,  1 ,      10 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
-    Label(  'rectification border' ,  2 ,      10 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
-    Label(  'out of roi'           ,  3 ,      10 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
-    Label(  'static'               ,  4 ,      10 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
-    Label(  'dynamic'              ,  5 ,      10 , 'void'            , 0       , False        , True         , (111, 74,  0) ),
-    Label(  'ground'               ,  6 ,      10 , 'void'            , 0       , False        , True         , ( 81,  0, 81) ),
+    Label(  'unlabeled'            ,  0 ,       6 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
+    Label(  'ego vehicle'          ,  1 ,       6 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
+    Label(  'rectification border' ,  2 ,       6 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
+    Label(  'out of roi'           ,  3 ,       6 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
+    Label(  'static'               ,  4 ,       6 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
+    Label(  'dynamic'              ,  5 ,       6 , 'void'            , 0       , False        , True         , (111, 74,  0) ),
+    Label(  'ground'               ,  6 ,       0 , 'void'            , 0       , False        , True         , ( 81,  0, 81) ),
     Label(  'road'                 ,  7 ,       0 , 'flat'            , 1       , False        , False        , (128, 64,128) ),
     Label(  'sidewalk'             ,  8 ,       1 , 'flat'            , 1       , False        , False        , (244, 35,232) ),
     Label(  'parking'              ,  9 ,       1 , 'flat'            , 1       , False        , True         , (250,170,160) ),
     Label(  'rail track'           , 10 ,       1 , 'flat'            , 1       , False        , True         , (230,150,140) ),
     Label(  'building'             , 11 ,       2 , 'construction'    , 2       , False        , False        , ( 70, 70, 70) ),
-    Label(  'wall'                 , 12 ,       3 , 'construction'    , 2       , False        , False        , (102,102,156) ),
-    Label(  'fence'                , 13 ,       3 , 'construction'    , 2       , False        , False        , (190,153,153) ),
-    Label(  'guard rail'           , 14 ,       3 , 'construction'    , 2       , False        , True         , (180,165,180) ),
-    Label(  'bridge'               , 15 ,       3 , 'construction'    , 2       , False        , True         , (150,100,100) ),
-    Label(  'tunnel'               , 16 ,       3 , 'construction'    , 2       , False        , True         , (150,120, 90) ),
-    Label(  'pole'                 , 17 ,      10 , 'object'          , 3       , False        , False        , (153,153,153) ),
-    Label(  'polegroup'            , 18 ,      10 , 'object'          , 3       , False        , True         , (153,153,153) ),
-    Label(  'traffic light'        , 19 ,      10 , 'object'          , 3       , False        , False        , (250,170, 30) ),
-    Label(  'traffic sign'         , 20 ,      10 , 'object'          , 3       , False        , False        , (220,220,  0) ),
-    Label(  'vegetation'           , 21 ,       4 , 'nature'          , 4       , False        , False        , (107,142, 35) ),
-    Label(  'terrain'              , 22 ,       4 , 'nature'          , 4       , False        , False        , (152,251,152) ),
-    Label(  'sky'                  , 23 ,       5 , 'sky'             , 5       , False        , False        , ( 70,130,180) ),
+    Label(  'wall'                 , 12 ,       2 , 'construction'    , 2       , False        , False        , (102,102,156) ),
+    Label(  'fence'                , 13 ,       0 , 'construction'    , 2       , False        , False        , (190,153,153) ),
+    Label(  'guard rail'           , 14 ,       0 , 'construction'    , 2       , False        , True         , (180,165,180) ),
+    Label(  'bridge'               , 15 ,       2 , 'construction'    , 2       , False        , True         , (150,100,100) ),
+    Label(  'tunnel'               , 16 ,       2 , 'construction'    , 2       , False        , True         , (150,120, 90) ),
+    Label(  'pole'                 , 17 ,       6 , 'object'          , 3       , False        , False        , (153,153,153) ),
+    Label(  'polegroup'            , 18 ,       6 , 'object'          , 3       , False        , True         , (153,153,153) ),
+    Label(  'traffic light'        , 19 ,       6 , 'object'          , 3       , False        , False        , (250,170, 30) ),
+    Label(  'traffic sign'         , 20 ,       6 , 'object'          , 3       , False        , False        , (220,220,  0) ),
+    Label(  'vegetation'           , 21 ,       3 , 'nature'          , 4       , False        , False        , (107,142, 35) ),
+    Label(  'terrain'              , 22 ,       3 , 'nature'          , 4       , False        , False        , (152,251,152) ),
+    Label(  'sky'                  , 23 ,       4 , 'sky'             , 5       , False        , False        , ( 70,130,180) ),
     Label(  'person'               , 24 ,       6 , 'human'           , 6       , True         , False        , (220, 20, 60) ),
     Label(  'rider'                , 25 ,       6 , 'human'           , 6       , True         , False        , (255,  0,  0) ),
-    Label(  'car'                  , 26 ,       7 , 'vehicle'         , 7       , True         , False        , (  0,  0,142) ),
-    Label(  'truck'                , 27 ,       8 , 'vehicle'         , 7       , True         , False        , (  0,  0, 70) ),
-    Label(  'bus'                  , 28 ,       8 , 'vehicle'         , 7       , True         , False        , (  0, 60,100) ),
-    Label(  'caravan'              , 29 ,       8 , 'vehicle'         , 7       , True         , True         , (  0,  0, 90) ),
-    Label(  'trailer'              , 30 ,       8 , 'vehicle'         , 7       , True         , True         , (  0,  0,110) ),
-    Label(  'train'                , 31 ,      10 , 'vehicle'         , 7       , True         , False        , (  0, 80,100) ),
-    Label(  'motorcycle'           , 32 ,       9 , 'vehicle'         , 7       , True         , False        , (  0,  0,230) ),
-    Label(  'bicycle'              , 33 ,       9 , 'vehicle'         , 7       , True         , False        , (119, 11, 32) ),
-    Label(  'license plate'        , -1 ,      10 , 'vehicle'         , 7       , False        , True         , (  0,  0,142) ),
+    Label(  'car'                  , 26 ,       5 , 'vehicle'         , 7       , True         , False        , (  0,  0,142) ),
+    Label(  'truck'                , 27 ,       5 , 'vehicle'         , 7       , True         , False        , (  0,  0, 70) ),
+    Label(  'bus'                  , 28 ,       5 , 'vehicle'         , 7       , True         , False        , (  0, 60,100) ),
+    Label(  'caravan'              , 29 ,       5 , 'vehicle'         , 7       , True         , True         , (  0,  0, 90) ),
+    Label(  'trailer'              , 30 ,       5 , 'vehicle'         , 7       , True         , True         , (  0,  0,110) ),
+    Label(  'train'                , 31 ,       5 , 'vehicle'         , 7       , True         , False        , (  0, 80,100) ),
+    Label(  'motorcycle'           , 32 ,      6 , 'vehicle'         , 7       , True         , False        , (  0,  0,230) ),
+    Label(  'bicycle'              , 33 ,      6 , 'vehicle'         , 7       , True         , False        , (119, 11, 32) ),
+    Label(  'license plate'        , -1 ,      6 , 'vehicle'         , 7       , False        , True         , (  0,  0,142) ),
 ]
 
 
@@ -104,15 +108,15 @@ colors = [
           (128, 64,128) , # road (flat)
           (244, 35,232) , # sidewalk
           ( 70, 70, 70) , # building
-          (102,102,156) , # construction
+        #   (102,102,156) , # construction --- bad
         #   (153,153,153) , # object
-          (107,142, 35) , # vegetation
+          (107,142, 35) , # vegetation & terrain
         #   (152,251,152) , # terrain
           ( 70,130,180) , # sky
-          (220, 20, 60) , # human
+        #   (220, 20, 60) , # human
           (  0,  0,142) , # car
-          (  0,  0, 70) , # truck / bus
-          (  0,  20,230) , # motorcycle / bicycle
+        #   (  0,  0, 70) , # truck / bus
+        #   (  0,  20,230) , # motorcycle / bicycle
           (  0,  0,  0)   # void
           ]
 
@@ -126,14 +130,13 @@ cityscapes_cmap = ListedColormap(colors)
 
 
 class CityscapeSegTemp(Dataset):
-    def __init__(self, root_dir, device, split='train', transform=None, temp_scale=None ):
+    def __init__(self, root_dir, split='train', transform=None, temp_scale=None ):
         self.root_dir = root_dir
         self.split = split
         self.img_dir = os.path.join(root_dir, f'leftImg8bit/{split}')
         self.mask_dir = os.path.join(root_dir, f'gtFine/{split}')
         self.json_dir = os.path.join(root_dir, f'vehicle/{split}')
         self.img_list = glob.glob(f'{self.img_dir}/*/*_leftImg8bit.png')
-        self.device = device
         self.transform = transform
         self.temp_scale = temp_scale
 
@@ -160,13 +163,15 @@ class CityscapeSegTemp(Dataset):
         # img = img.resize((256, 256), Image.LANCZOS)
         # mask = mask.resize((256, 256), Image.NEAREST)  
 
+        img = img.resize((128, 64), Image.LANCZOS)
+        mask = mask.resize((128, 64), Image.NEAREST)  
       
         mask_array = np.array(mask, dtype=np.int32)
         mask_remapped_array = np.vectorize(self.id_to_trainId.get, otypes=[np.int32])(mask_array)
+
+
         mask = Image.fromarray(mask_remapped_array.astype(np.uint8))
 
-        img = img.resize((128, 64), Image.LANCZOS)
-        mask = mask.resize((128, 64), Image.NEAREST)  
 
         if self.transform:
             img = self.transform(img)
@@ -194,7 +199,7 @@ class CityscapeSegTemp(Dataset):
         temperature_tensor = torch.tensor(temperature, dtype=torch.float32)
 
 
-        return img_tensor.to(self.device), (mask_tensor.to(self.device), temperature_tensor.to(self.device))
+        return img_tensor, (mask_tensor, temperature_tensor)
 
 
 
@@ -224,6 +229,9 @@ def unscale_temp(scaled_temp, min_temp, max_temp):
 ## ---- calculate ious -----
 ## -------------------------
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
 def calculate_iou(preds, labels, num_classes):
     iou_per_class = []
@@ -247,16 +255,13 @@ def calculate_iou(preds, labels, num_classes):
 
     return iou_per_class
 
-
-
-import torch
-import torch.nn.functional as F
-
 ## -------------------------
 ## ---- Train Function -----
 ## -------------------------
 
-def train(epoch, model,train_loader, optimizer, log_interval, num_classes, train_loss, train_epoch_iou, train_mask_loss , train_temp_loss):
+def train(epoch, model,train_loader, device, optimizer, log_interval, num_classes, train_loss, train_epoch_iou, train_mask_loss , train_temp_loss):
+    
+    # model.to('cuda')
     model.train()
     total_mask_loss = 0.0
     total_temp_loss = 0.0
@@ -265,7 +270,7 @@ def train(epoch, model,train_loader, optimizer, log_interval, num_classes, train
     train_iou = []
 
     for batch_idx, (images, (masks, temperatures)) in enumerate(train_loader):
-        images, masks, temperatures = images, masks, temperatures
+        images, masks, temperatures = images.to(device), masks.to(device), temperatures.to(device)
 
         optimizer.zero_grad()
         output_masks, output_temps = model(images)
@@ -278,8 +283,14 @@ def train(epoch, model,train_loader, optimizer, log_interval, num_classes, train
         
         
         # Combine losses and backpropagate
-        total_loss = mask_loss + temp_loss
+        total_loss = mask_loss + temp_loss * 0.001
         total_loss.backward()
+
+        max_grad_norm = 0.5
+
+        # Clip the gradients
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+
         optimizer.step()
 
         train_running_loss += total_loss.item()  # Update running loss
@@ -314,8 +325,9 @@ def train(epoch, model,train_loader, optimizer, log_interval, num_classes, train
 ## ---- Evaluate Function -----
 ## ----------------------------
 
-def evaluate(model, data_loader, num_classes, val_loss, val_epoch_iou, val_mask_loss, val_temp_loss):
+def evaluate(model, data_loader, device, num_classes, val_loss, val_epoch_iou, val_mask_loss, val_temp_loss):
 
+    # model.to('cpu')
     model.eval()
     total_mask_loss = 0.0
     total_temp_loss = 0.0
@@ -324,7 +336,7 @@ def evaluate(model, data_loader, num_classes, val_loss, val_epoch_iou, val_mask_
 
     with torch.no_grad():  # Disable gradient calculation during validation
         for images, (masks, temperatures) in data_loader:
-            images, masks, temperatures = images, masks, temperatures
+            images, masks, temperatures = images.to(device), masks.to(device), temperatures.to(device)
             output_masks, output_temps = model(images)
 
             # Calculate and accumulate mask loss
@@ -339,7 +351,7 @@ def evaluate(model, data_loader, num_classes, val_loss, val_epoch_iou, val_mask_
             # Calculate and accumulate temperature loss
             temp_loss = F.mse_loss(output_temps, temperatures)
 
-            total_loss = mask_loss + temp_loss
+            total_loss = mask_loss + temp_loss  * 0.001
 
             total_mask_loss += mask_loss.item()
             total_temp_loss += temp_loss.item()
@@ -349,13 +361,10 @@ def evaluate(model, data_loader, num_classes, val_loss, val_epoch_iou, val_mask_
             iou_batch = calculate_iou(output_masks, masks, num_classes)
             iou.extend(iou_batch)
 
-        # Normalize the mask loss per pixel and calculate average losses
         total_mask_loss /= len(data_loader) 
         total_temp_loss /= len(data_loader)
         running_loss /= len(data_loader)
 
-        # Combine losses with consistent weighting
-        # epoch_loss = total_mask_loss + total_temp_loss 
 
         # Calculate mean IoU over all batches
         mean_iou_val = sum(iou) / len(iou)
@@ -404,6 +413,8 @@ def plot_class_colors(classes, cmap):
 
 
 def plot_samples(data_loader, num_samples=4, unnormalize=False, mean=None, std=None, temp_scale=None):
+
+    
     # Fetch a batch of samples
     images, (masks, temperatures) = next(iter(data_loader))
     
@@ -531,6 +542,8 @@ def plot_metrics(model, data_loader, device, num_classes, temp_scale= None):
     fig, axs = plt.subplots(1, 2, figsize=(16, 8))
 
     # Confusion Matrix
+    
+    sns.set(font_scale=1.2)
     sns.heatmap(cm_normalized, annot=True, fmt='.2f', cmap='Blues', ax=axs[0], xticklabels=True, yticklabels=True)
     axs[0].set_xlabel('Predicted')
     axs[0].set_ylabel('True')
